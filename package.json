@@ -1,0 +1,17 @@
+{
+  "name": "grid_learning",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Johann Steinbrecher",
+  "license": "MIT",
+  "scripts": {
+    "start": "node bin/runner.js"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^0.13.5",
+    "@tensorflow/tfjs-node": "^0.1.21",
+    "bluebird": "^3.5.3",
+    "lodash": "^4.17.11",
+    "uuid": "^3.3.2"
+  }
+}
