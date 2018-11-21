@@ -1,8 +1,12 @@
 const config = require('../config.json')
-const cluster = require('cluster')
 const tf = require('@tensorflow/tfjs')
 const _ = require('lodash')
 
+/**
+ * Collaborative Deep Sarsa Agent.
+ * Derived from https://github.com/Hulk89/gridworld_tfjs and
+ * inspired by https://cs.stanford.edu/people/karpathy/reinforcejs/
+ */
 class DeepSarsaAgent {
 
   constructor(width, height, sendPredictionRequest) {
