@@ -1,6 +1,7 @@
 const config = require('../config')
-const tf = require('@tensorflow/tfjs')
 const Environment = require('./environment')
+const fs = require('fs')
+const tf = require('@tensorflow/tfjs')
 const _ = require('lodash')
 
 const actionLookup = {
@@ -15,7 +16,13 @@ async function train(agent, width, height, enemies, locations) {
   let data = env.data
   const episodes = config.agent.episodes
 
-  for (let episode = 0; episode < episodes; episode++) {
+  let scores = []
+
+  fs.appendFileSync('./results.txt', `workers: ${config.workers}\n`)
+
+  fs.appendFileSync('./results.txt', `game: ${JSON.stringify(config.game)}\n`)
+
+  for (let episode = 1; episode <= episodes; episode++) {
     env.initializeGame()
     data = env.data
     let state = [ _.cloneDeep(data) ]
@@ -43,9 +50,16 @@ async function train(agent, width, height, enemies, locations) {
 
       await tf.nextFrame()
     }
+    scores.push(score)
 
     console.info(`${episode}th episode scored: ${score.toFixed(3)}`)
+    if (!(episode % 10)) {
+      fs.appendFileSync('./results.txt', `episode,${episode},score,${_.mean(scores.slice(-10))}\n`)
+    }
   }
+
+
+  console.info(`training mean score: ${_.mean(scores)}`)
 
 }
 

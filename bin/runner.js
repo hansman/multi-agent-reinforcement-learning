@@ -11,7 +11,7 @@ const _               = require('lodash')
 
 
 // use tensorflow c++ bindings
-// require('@tensorflow/tfjs-node')
+require('@tensorflow/tfjs-node')
 
 const listeners = {} // broadcast response listeners
 const callbacks = {} // final request callbacks
@@ -48,8 +48,8 @@ if (cluster.isMaster) {
   const { enemies, width, height } = config.game
 
   // Generate new game (optional)
-  config.game.locs = getLocations(2 + enemies, width, height)
-  fs.writeFileSync(`${__dirname}/../config.json`, JSON.stringify(config, undefined, 2))
+  // config.game.locs = getLocations(2 + enemies, width, height)
+  // fs.writeFileSync(`${__dirname}/../config.json`, JSON.stringify(config, undefined, 2))
 
   // Setup message handler
   const messageHandler = (senderId, msg) => {
@@ -158,8 +158,10 @@ if (cluster.isMaster) {
        * A peer agent is requesting a prediction for a given state.
        * Get next action prediction from current model and respond.
        */
-      agent.predict_action(data).data().then((actions) => {
+      const prediction = agent.predict_action(data)
+      prediction.data().then((actions) => {
         process.send({type: type + '-re', id: uuid.v4(), re: id, data: actions})
+        prediction.dispose()
       });
     } else if (type == 'predictionResponse') {
       if (callbacks[re]) {
@@ -173,7 +175,5 @@ if (cluster.isMaster) {
 
   const locs = config.game.locs
   train(agent, width, height, enemies, locs)
-
-  //viewModel(agent, locs)
 
 }
