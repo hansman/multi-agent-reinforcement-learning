@@ -97,7 +97,9 @@ class DeepSarsaAgent {
         }
       }
 
-      return (await predictions[index].argMax(1).data())[0]
+      let action = (await predictions[index].argMax(1).data())[0]
+      predictions.forEach(p => p.dispose())
+      return action
     }
   }
 
