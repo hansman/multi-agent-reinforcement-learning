@@ -18,9 +18,9 @@ async function train(agent, width, height, enemies, locations) {
 
   let scores = []
 
-  fs.appendFileSync('./results', `workers: ${config.workers}\n`)
+  fs.appendFileSync('./results.txt', `workers: ${config.workers}\n`)
 
-  fs.appendFileSync('./results', `game: ${JSON.stringify(config.game)}\n`)
+  fs.appendFileSync('./results.txt', `game: ${JSON.stringify(config.game)}\n`)
 
   for (let episode = 1; episode <= episodes; episode++) {
     env.initializeGame()
@@ -54,7 +54,7 @@ async function train(agent, width, height, enemies, locations) {
 
     console.info(`${episode}th episode scored: ${score.toFixed(3)}`)
     if (!(episode % 10)) {
-      fs.appendFileSync('./results', `episode,${episode},score,${_.mean(scores.slice(-10))}\n`)
+      fs.appendFileSync('./results.txt', `episode,${episode},score,${_.mean(scores.slice(-10))}\n`)
     }
   }
 
