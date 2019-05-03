@@ -54,7 +54,7 @@ async function train(agent, width, height, enemies, locations) {
 
     console.info(`${episode}th episode scored: ${score.toFixed(3)}`)
     if (!(episode % 10)) {
-      fs.appendFileSync('./results.txt', `episode,${episode},score,${_.mean(scores.slice(-10))}\n`)
+      fs.appendFileSync(`./results-${agent.id}.txt`, `${episode},score,${_.mean(scores.slice(-10))}\n`)
     }
   }
 

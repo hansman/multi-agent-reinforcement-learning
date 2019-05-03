@@ -1,5 +1,6 @@
 const config = require('../config.json')
 const tf = require('@tensorflow/tfjs')
+const uuid = require('uuid')
 const _ = require('lodash')
 
 /**
@@ -10,6 +11,7 @@ const _ = require('lodash')
 class DeepSarsaAgent {
 
   constructor(width, height, sendPredictionRequest) {
+    this.id = uuid.v4()
     this.discount_factor = config.agent.discountFactor
     this.learning_rate = config.agent.learningRate
 
@@ -71,9 +73,10 @@ class DeepSarsaAgent {
 
   async get_action(state) {
     if (Math.random() <= this.epsilon) {
+      // explorative step
       return _.random(0, 3)
     } else {
-
+      // exploitive step
       // get predictions from cluster workers
       let predictions = (config.workers > 1) ? await this.sendPredictionRequest(state) : []
 

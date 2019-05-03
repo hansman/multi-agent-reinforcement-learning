@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
-const Agent           = require('../src/agent')
-const cluster         = require('cluster')
-const config          = require('../config.json')
-const fs              = require('fs')
-const Promise         = require('bluebird');
-const train           = require('../src/train')
-const uuid            = require('uuid')
-const _               = require('lodash')
-
+const Agent = require('../src/agent')
+const cluster = require('cluster')
+const config = require('../config.json')
+const game = require('../game.json')
+const Promise = require('bluebird');
+const train = require('../src/train')
+const uuid = require('uuid')
+const _ = require('lodash')
 
 // use tensorflow c++ bindings
 require('@tensorflow/tfjs-node')
@@ -16,40 +15,11 @@ require('@tensorflow/tfjs-node')
 const listeners = {} // broadcast response listeners
 const callbacks = {} // final request callbacks
 
-
-const getRandomSubarray = (arr, size) => {
-  var shuffled = arr.slice(0), i = arr.length, temp, index
-  while (i--) {
-    index = Math.floor((i + 1) * Math.random())
-    temp = shuffled[index]
-    shuffled[index] = shuffled[i]
-    shuffled[i] = temp
-  }
-  return shuffled.slice(0, size)
-}
-
-const getLocations = (num, width, height) => {
-  var spaces = []
-  for (let i = 0; i < width; i++) {
-    for (let j = 0; j < height; j++) {
-      spaces.push([i, j])
-    }
-  }
-  return getRandomSubarray(spaces, num)
-}
-
-
 if (cluster.isMaster) {
   /**
    * Master process. Setup message handler and fork workers.
    */
   console.info(`Master ${process.pid} is running`)
-
-  const { enemies, width, height } = config.game
-
-  // Generate new game (optional)
-  // config.game.locs = getLocations(2 + enemies, width, height)
-  // fs.writeFileSync(`${__dirname}/../config.json`, JSON.stringify(config, undefined, 2))
 
   // Setup message handler
   const messageHandler = (senderId, msg) => {
@@ -70,7 +40,7 @@ if (cluster.isMaster) {
        * request to all other workers.
        */
 
-      // setup callback
+      // setup callback for accumulated prediction response
       callbacks[id] = (data) => {
         cluster.workers[senderId].send({id: uuid.v4(), re: id, type: 'predictionResponse', data})
       }
@@ -85,7 +55,9 @@ if (cluster.isMaster) {
           }
           let { dataObjects } = listeners[id]
           dataObjects.push(data)
-          if (dataObjects.length == (Object.keys(cluster.workers).length - 1)) {
+          if (config.neighboringGradient && (dataObjects.length == 2)) {
+            callbacks[id](dataObjects)
+          } else if (dataObjects.length == (Object.keys(cluster.workers).length - 1)) {
             callbacks[id](dataObjects)
           }
         }
@@ -98,16 +70,29 @@ if (cluster.isMaster) {
           delete listeners[msg.id]
           delete callbacks[msg.id]
         }, 20e3)
-
       }
 
-      // broadcast request to workers
-      _.forEach(cluster.workers, worker => {
-        if (worker.id != senderId) {
-          worker.send({type, data, id})
+      if (!config.neighboringGradient) {
+        // broadcast request to workers
+        _.forEach(cluster.workers, worker => {
+          if (worker.id != senderId) {
+            worker.send({type, data, id})
+          }
+        })
+      } else {
+        // send request to neighboring workers only
+        const workers = _.values(cluster.workers)
+        for (let i = 0; i < workers.length; i++) {
+          const worker = workers[i]
+          if (worker.id == senderId) {
+            const leftNeighbor = workers[i ? (i - 1) : (workers.length - 1)]
+            leftNeighbor.send({ type, data, id })
+            const rightNeighbor = workers[(i + 1) == workers.length ? 0 : (i + 1)]
+            rightNeighbor.send({ type, data, id })
+            break;
+          }
         }
-      })
-
+      }
     } else {
       console.warn('unrecognized message type', type)
     }
@@ -123,7 +108,6 @@ if (cluster.isMaster) {
   cluster.on('death', (worker) => {
     console.warn('Worker ' + worker.pid + ' died.')
   })
-
 } else {
   console.info(`Worker ${process.pid} is running`)
   /**
@@ -132,22 +116,21 @@ if (cluster.isMaster) {
    */
   const { width, height, enemies } = config.game
 
-  // create rl agent
-
   /*
-   * sendPredictionRequest
-   * Sends a prediction request from worker to master via ipc channel
-   */
-  const sendPredictionRequest = Promise.promisify((state, cb) => {
-    const id = uuid.v4()
-    callbacks[id] = cb
-    process.send({type: 'predictionRequest', id, data: state})
-    setTimeout(() => {
-      delete callbacks[id]
+  * sendPredictionRequest
+  * Sends a prediction request from worker to master via ipc channel
+  */
+ const sendPredictionRequest = Promise.promisify((state, cb) => {
+   const id = uuid.v4()
+   callbacks[id] = cb
+   process.send({type: 'predictionRequest', id, data: state})
+   setTimeout(() => {
+     delete callbacks[id]
     }, 20e3)
   })
-  const agent = new Agent(width, height, sendPredictionRequest)
 
+  // create rl agent
+  const agent = new Agent(width, height, sendPredictionRequest)
 
   // handle messages from master
   process.on('message', (msg) => {
@@ -170,10 +153,7 @@ if (cluster.isMaster) {
     } else {
       console.warn('unrecognized message type', type)
     }
-
   })
 
-  const locs = config.game.locs
-  train(agent, width, height, enemies, locs)
-
+  train(agent, width, height, enemies, game)
 }
