@@ -5,7 +5,8 @@
   "author": "Johann Steinbrecher",
   "license": "MIT",
   "scripts": {
-    "start": "node bin/runner.js"
+    "start": "node bin/runner.js",
+    "generate-game": "node bin/generateGame.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^0.13.5",

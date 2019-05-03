@@ -1,37 +1,16 @@
 {
-  "workers": 4,
-  "game": {
-    "width": 13,
-    "height": 13,
-    "enemies": 3,
-    "locs": [
-      [
-        0,
-        4
-      ],
-      [
-        9,
-        7
-      ],
-      [
-        9,
-        11
-      ],
-      [
-        4,
-        4
-      ],
-      [
-        2,
-        3
-      ]
-    ]
-  },
+  "workers": 32,
+  "neighboringGradient": true,
   "agent": {
     "discountFactor": 0.9,
     "episodes": 2000,
     "learningRate": 0.001,
     "epsilonDecay": 0.9998,
     "epsilonMin": 0.01
+  },
+  "game": {
+    "width": 13,
+    "height": 13,
+    "enemies": 3
   }
 }
