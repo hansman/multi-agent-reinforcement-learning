@@ -9,7 +9,11 @@ The algorithm presented in this codebase obtains an action by predictions from *
 
 Multiple collaborating agents require less episodes to solve gridworld. I think of it like a team of people that initially explore a maze individually by picking random routes. As they build up knowledge they take turns on intersections based on their collectively learned experience and get to the end quicker than they would all by themselves.
 
-![Alt text](results/ScoreOverEpisodes.png?raw=true "Score over episodes")
+![Alt text](results/score-n-1.png?raw=true "Score over episodes n-1")
+Score over episodes - each agent shares experience with 2 adjacent neighbors
+
+![Alt text](results/score-n-n.png?raw=true "Score over episodes n-n")
+Score over episodes - each agent shares experience with all other agents
 
 ## How to run
     $ yarn install
