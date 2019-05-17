@@ -10,26 +10,28 @@ const _ = require('lodash')
  */
 class DeepSarsaAgent {
 
-  constructor(width, height, sendPredictionRequest) {
+  constructor(sendPredictionRequest) {
     this.id = uuid.v4()
-    this.discount_factor = config.agent.discountFactor
-    this.learning_rate = config.agent.learningRate
+    this.discountFactor = config.agent.discountFactor
+    this.learningRate = config.agent.learningRate
 
-    this.epsilon_decay = config.agent.epsilonDecay
-    this.epsilon_min = config.agent.epsilonMin
+    this.epsilonDecay = config.agent.epsilonDecay
+    this.epsilonMin = config.agent.epsilonMin
     this.epsilon = 1.0
-    this.width = width
-    this.height = height
-    this.model = this.make_model(this.learning_rate)
-    this.num_frame = 0
+    this.numFrame = 0
     this.sendPredictionRequest = sendPredictionRequest
   }
 
-  make_model(lr) {
+  makeModel(actionSpace = 4, stateSpace) {
+
+    console.log('actionSpace', actionSpace)
+
+    this.actionSpace = actionSpace
+    this.stateSpace = stateSpace
     const model = tf.sequential()
 
     model.add(tf.layers.dense({
-      inputShape: [ this.width * this.height ],
+      inputShape: [ stateSpace ],
       units: 128,
       activation: 'relu',
       kernelInitializer: 'varianceScaling'
@@ -45,48 +47,57 @@ class DeepSarsaAgent {
       kernelInitializer: 'varianceScaling'
     }))
     model.add(tf.layers.dense({
-      units:4,
+      units: actionSpace,
       kernelInitializer: 'VarianceScaling',
       activation: 'linear'
     }))
     model.compile({
       loss: 'meanSquaredError',
-      optimizer: tf.train.adam(lr)
+      optimizer: tf.train.adam(this.learningRate)
     })
 
-    return model
+    this.model = model
   }
 
   makeInput(data) {
-    const input = tf.tensor3d(data, [1, this.height, this.width])
-    const flatten = input.reshape([1, this.width * this.height])
-    input.dispose()
-    return flatten
+    // is scalar?
+    if (typeof data == 'number') {
+      data = [ data ]
+    }
+    // is 2-d?
+    if (data[0].length) {
+      const input = tf.tensor3d(data, [1, this.height, this.width])
+      const flatten = input.reshape([1, this.width * this.height])
+      input.dispose()
+      return flatten
+    } else {
+      return tf.tensor2d(data, [1, data.length])
+    }
   }
 
-  predict_action(state) {
-    const input_data = this.makeInput(state)
-    const prediction = this.model.predict(input_data)
-    input_data.dispose()
+  predictAction(state) {
+    const inputData = this.makeInput(state)
+    const prediction = this.model.predict(inputData)
+    inputData.dispose()
     return prediction
   }
 
-  async get_action(state) {
+  async getAction(state) {
     if (Math.random() <= this.epsilon) {
       // explorative step
-      return _.random(0, 3)
+      return _.random(0, this.actionSpace - 1)
     } else {
       // exploitive step
       // get predictions from cluster workers
       let predictions = (config.workers > 1) ? await this.sendPredictionRequest(state) : []
 
       // convert array to tensor
-      predictions = predictions.map((prediction) => {
+      predictions = predictions.map(prediction => {
         return tf.tensor2d([_.values(prediction)])
       })
 
       // add local prediction
-      predictions.push(this.predict_action(state))
+      predictions.push(this.predictAction(state))
 
       // parse best action from predictions
       const results = await Promise.all(predictions.map((prediction) => {return prediction.max(1).data()}))
@@ -106,47 +117,44 @@ class DeepSarsaAgent {
     }
   }
 
-  async train_model(state, action, reward, next_state, next_action, done) {
-
-    if (this.epsilon > this.epsilon_min) {
-      this.epsilon *= this.epsilon_decay
+  async trainModel(state, action, reward, nextState, nextAction, done) {
+    if (this.epsilon > this.epsilonMin) {
+      this.epsilon *= this.epsilonDecay
     }
 
     state = this.makeInput(state)
-    next_state = this.makeInput(next_state)
+    nextState = this.makeInput(nextState)
 
     var target = this.model.predict(state)
-    var target_val = this.model.predict(next_state)
+    var targetVal = this.model.predict(nextState)
 
-    var q_res = await target.data()
-    var target_reward = (await target_val.data())
-    target_reward = target_reward[next_action]
+    var qRes = await target.data()
+    var targetReward = (await targetVal.data())
+    targetReward = targetReward[nextAction]
     if (done) {
-      q_res[action] = reward
+      qRes[action] = reward
     } else {
-      q_res[action] = reward + this.discount_factor * target_reward
+      qRes[action] = reward + this.discountFactor * targetReward
     }
 
-    const res = Array.from(q_res)
+    const res = Array.from(qRes)
     // tensor of rewards for four actions: up, down, left, right
-    const q = tf.tensor2d(res, [1, 4])
+    const q = tf.tensor2d(res, [1, this.actionSpace])
 
     // train model
     const h = await this.model.fit(state, q, {epoch: 1})
 
-    this.num_frame += 1
-    if (this.num_frame % 100 == 0) {
+    this.numFrame += 1
+    if (this.numFrame % 100 == 0) {
       // console.info(`frame ${this.num_frame}. loss ${h.history.loss[0]}.`)
       console.log('epsilon', this.epsilon)
     }
     state.dispose()
-    next_state.dispose()
+    nextState.dispose()
     target.dispose()
-    target_val.dispose()
+    targetVal.dispose()
     q.dispose()
-
   }
-
 }
 
 module.exports = DeepSarsaAgent

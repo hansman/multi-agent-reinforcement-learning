@@ -1,16 +1,21 @@
 {
-  "workers": 32,
-  "neighboringGradient": true,
+  "environmentId": "CartPole-v1",
+  "workers": 1,
+  "nearestNeighbor": true,
   "agent": {
     "discountFactor": 0.9,
-    "episodes": 2000,
+    "episodes": 1510,
     "learningRate": 0.001,
     "epsilonDecay": 0.9998,
     "epsilonMin": 0.01
   },
-  "game": {
-    "width": 13,
-    "height": 13,
-    "enemies": 3
+  "gym": {
+    "api": {
+      "protocol": "http:",
+      "hostname": "127.0.0.1",
+      "port": "5000",
+      "pathname": "/v1/envs/"
+    },
+    "render": true
   }
 }

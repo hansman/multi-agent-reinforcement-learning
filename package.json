@@ -5,14 +5,14 @@
   "author": "Johann Steinbrecher",
   "license": "MIT",
   "scripts": {
-    "start": "node bin/runner.js",
-    "generate-game": "node bin/generateGame.js"
+    "start": "node bin/runner.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^0.13.5",
     "@tensorflow/tfjs-node": "^0.1.21",
     "bluebird": "^3.5.3",
     "lodash": "^4.17.11",
+    "request-promise": "^4.2.4",
     "uuid": "^3.3.2"
   }
 }

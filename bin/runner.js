@@ -3,7 +3,6 @@
 const Agent = require('../src/agent')
 const cluster = require('cluster')
 const config = require('../config.json')
-const game = require('../game.json')
 const Promise = require('bluebird');
 const train = require('../src/train')
 const uuid = require('uuid')
@@ -55,9 +54,12 @@ if (cluster.isMaster) {
           }
           let { dataObjects } = listeners[id]
           dataObjects.push(data)
-          if (config.neighboringGradient && (dataObjects.length == 2)) {
+          const numOfWorkers = Object.keys(cluster.workers).length
+          if (config.nearestNeighbor && numOfWorkers <= 2 && dataObjects.length) {
             callbacks[id](dataObjects)
-          } else if (dataObjects.length == (Object.keys(cluster.workers).length - 1)) {
+          } else if (config.nearestNeighbor && (dataObjects.length == 2)) {
+            callbacks[id](dataObjects)
+          } else if (dataObjects.length == (numOfWorkers - 1)) {
             callbacks[id](dataObjects)
           }
         }
@@ -72,7 +74,7 @@ if (cluster.isMaster) {
         }, 20e3)
       }
 
-      if (!config.neighboringGradient) {
+      if (!config.nearestNeighbor) {
         // broadcast request to workers
         _.forEach(cluster.workers, worker => {
           if (worker.id != senderId) {
@@ -87,8 +89,10 @@ if (cluster.isMaster) {
           if (worker.id == senderId) {
             const leftNeighbor = workers[i ? (i - 1) : (workers.length - 1)]
             leftNeighbor.send({ type, data, id })
-            const rightNeighbor = workers[(i + 1) == workers.length ? 0 : (i + 1)]
-            rightNeighbor.send({ type, data, id })
+            if (workers.length > 2) {
+              const rightNeighbor = workers[(i + 1) == workers.length ? 0 : (i + 1)]
+              rightNeighbor.send({ type, data, id })
+            }
             break;
           }
         }
@@ -114,7 +118,6 @@ if (cluster.isMaster) {
    * Worker process. Setup message handlers,
    * create rl agent and train the model.
    */
-  const { width, height, enemies } = config.game
 
   /*
   * sendPredictionRequest
@@ -130,7 +133,7 @@ if (cluster.isMaster) {
   })
 
   // create rl agent
-  const agent = new Agent(width, height, sendPredictionRequest)
+  const agent = new Agent(sendPredictionRequest)
 
   // handle messages from master
   process.on('message', (msg) => {
@@ -141,7 +144,7 @@ if (cluster.isMaster) {
        * A peer agent is requesting a prediction for a given state.
        * Get next action prediction from current model and respond.
        */
-      const prediction = agent.predict_action(data)
+      const prediction = agent.predictAction(data)
       prediction.data().then((actions) => {
         process.send({type: type + '-re', id: uuid.v4(), re: id, data: actions})
         prediction.dispose()
@@ -155,5 +158,5 @@ if (cluster.isMaster) {
     }
   })
 
-  train(agent, width, height, enemies, game)
+  train(agent)
 }

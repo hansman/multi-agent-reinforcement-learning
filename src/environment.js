@@ -1,164 +1,95 @@
-/**
- * Game definition of gridworld.
- * Derived from https://github.com/Hulk89/gridworld_tfjs and
- * inspired by https://cs.stanford.edu/people/karpathy/reinforcejs/
- */
-
-const zeros2D = (rows, cols) => {
-  var array = [], row = []
-  while (cols--) {
-    row.push(0)
-  }
-  while (rows--) {
-    array.push(row.slice())
-  }
-  return array
-}
-
-class GameObject {
-
-  constructor(x, y, color_idx) {
-    this.x = x
-    this.y = y
-    this.color_idx = color_idx
-  }
-
-  getPos() {
-    return [this.x, this.y]
-  }
-
-  setPos(x, y) {
-    this.x = x
-    this.y = y
-  }
-
-  getColor() {
-    return this.color_idx
-  }
-
-}
-
+const config = require('../config.json')
+const Promise = require('bluebird')
+const requestPromise = require('request-promise')
+const url = require('url')
 
 class Environment {
-
-  constructor(width, height, num_enemy=1, locs) {
-    this.width = width
-    this.height = height
-    this.num_enemy = num_enemy
-    this.end_frame = 600
-
-    this.gameover_reward = -2
-    this.finish_reward = 10
-    this.step_reward = -0.01
-    this.time_over_reward = -2
-
-    this.locs = locs
-
-    this.data = zeros2D(this.height, this.width)
-    this.initializeGame()
+  constructor() {
+    const options = {
+      method: 'POST',
+      uri: url.format(config.gym.api),
+      body: {
+        'env_id': config.environmentId
+      },
+      json: true
+    }
+    return (async () => {
+      await requestPromise(options).then(body => {
+        this.instanceId = body.instance_id
+        console.info('this.instanceId', this.instanceId)
+      }).catch(console.warn)
+      await this.initializeSpace()
+      return this
+    })()
   }
 
-  initialize_display() {
-    for (let i = 0; i < this.width; i++) {
-      for (let j = 0; j < this.height; j++) {
-        this.data[j][i] = 0
+  /*
+   * returns initial observation, Array of Numbers
+   * Example:
+   * [
+   *   0.021447051116053537,
+   *   0.024554621758206052,
+   *   -0.008282778032650082,
+   *   0.0011348577826760242
+   * ]
+   */
+  async initializeSpace() {
+    const options = {
+      method: 'POST',
+      uri: `${url.format(config.gym.api)}${this.instanceId}/reset/`,
+      data: {},
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      json: true
+    }
+    const actionSpace = await this.getActionSpace()
+    this.actionSpace = actionSpace.n
+    return requestPromise(options).then(body => {
+      console.log('body', body)
+      if ((typeof body.observation) == 'number') {
+        this.stateSpace = 1
+      } else if (Array.isArray(body.observation)) {
+        this.stateSpace = body.observation.length
+      } else {
+        return Promise.reject({msg: 'unknown state space', observation: body.observation})
       }
-    }
-  }
-
-  initializeGame() {
-    this.frame = 0
-    this.initialize_display()
-
-    var locs = this.locs
-    this.agent = new GameObject(locs[0][0], locs[0][1], 3)
-    this.goal =  new GameObject(locs[1][0], locs[1][1], 2)
-    this.enemies = []
-    for (let i = 0; i < this.num_enemy; i++) {
-      var enemy = new GameObject(locs[2+i][0], locs[2+i][1], 1)
-      this.enemies.push(enemy)
-    }
-
-    this.end = false
-    this.objectsToData()
-  }
-
-  objectToData(obj) {
-    var pos = obj.getPos()
-    this.data[pos[1]][pos[0]] = obj.getColor()
-  }
-
-  objectsToData() {
-    this.initialize_display()
-
-    this.objectToData(this.goal)
-    this.enemies.forEach( e => {
-      this.objectToData(e)
+      return body.observation
+    }).catch(err => {
+      console.warn('Environment#initializeSpace failed', err)
     })
-    this.objectToData(this.agent)
   }
 
-  isSamePos(pos1, pos2) {
-    if (pos1[0] == pos2[0] && pos1[1] == pos2[1]) {
-      return true
-    } else {
-      return false
+  async getActionSpace() {
+    const options = {
+      method: 'GET',
+      uri: `${url.format(config.gym.api)}${this.instanceId}/action_space/`,
+      json: true
     }
+    return requestPromise(options).then(body => {
+      return body.info
+    }).catch(err => {
+      console.warn('Environment#getActionSpace failed', err)
+    })
   }
 
-  next_state(action) {
-    var actions = {
-      up: [0, -1],
-      down: [0, 1],
-      left: [-1, 0],
-      right: [1, 0]
+  async step(action) {
+    const options = {
+      method: 'POST',
+      uri: `${url.format(config.gym.api)}${this.instanceId}/step/`,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: {
+        action,
+        render: config.gym.render
+      },
+      json: true
     }
-
-    var new_pos = this.agent.getPos()
-    new_pos[0] += actions[action][0]
-    new_pos[1] += actions[action][1]
-    new_pos[0] = Math.min(Math.max(0, new_pos[0]), this.width-1)
-    new_pos[1] = Math.min(Math.max(0, new_pos[1]), this.height-1)
-
-    this.agent.setPos(new_pos[0], new_pos[1])
-
-    /* rendering */
-    this.objectsToData()
-
-    if (this.isSamePos(this.agent.getPos(), this.goal.getPos())) {
-      console.info('Game clear')
-      this.end = true
-      return this.finish_reward
-    }
-    for (let i = 0; i < this.enemies.length; i++) {
-      if (this.isSamePos(this.agent.getPos(),
-                         this.enemies[i].getPos())){
-        console.info('Game over')
-        this.end = true
-        return this.gameover_reward
-      }
-    }
-    if (this.frame >= this.end_frame) {
-      console.warn('Game over with frame overflow')
-      this.end = true
-      return this.time_over_reward
-    }
-    /* next frame */
-    this.frame += 1
-    return this.step_reward
+    return requestPromise(options).catch(err => {
+      console.warn('Environment#step failed', err)
+    })
   }
-
-  step(action) {
-    const reward = this.next_state(action)
-    /* return next_state */
-    return {
-      reward,
-      state: this.data,
-      done: this.end,
-      frame: this.frame
-    }
-  }
-
 }
 
 module.exports = Environment

@@ -16,29 +16,36 @@ Score over episodes - each agent shares experience with 2 adjacent neighbors
 Score over episodes - each agent shares experience with all other agents
 
 ## How to run
+
+    # run gym environment server
+    $ git submodule init
+    $ cd gym-http-api
+    $ pip install -r requirements.txt
+    $ python3 gym_http_server.py
+
+    # run multi-agent learning
     $ yarn install
     $ yarn start
-
-    # optional, to generate a new game
-    $ yarn generate-game
 
 ## Configure the game, cluster and agents
 ./config.json
 ```json
 {
-  "workers": 8,
-  "neighboringGradient": true,
+  "environmentId": "MountainCar-v0",
+  "workers": 16,
+  "nearestNeighbor": true,
   "agent": {
     "discountFactor": 0.9,
-    "episodes": 2000,
+    "episodes": 1500,
     "learningRate": 0.001,
     "epsilonDecay": 0.9998,
     "epsilonMin": 0.01
   },
-  "game": {
-    "width": 13,
-    "height": 13,
-    "enemies": 3
+  "gymApi": {
+    "protocol": "http:",
+    "hostname": "127.0.0.1",
+    "port": "5000",
+    "pathname": "/v1/envs/"
   }
 }
 ```

@@ -4,63 +4,47 @@ const fs = require('fs')
 const tf = require('@tensorflow/tfjs')
 const _ = require('lodash')
 
-const actionLookup = {
-  0: 'left',
-  1: 'down',
-  2: 'up',
-  3: 'right'
-}
-
-async function train(agent, width, height, enemies, locations) {
-  const env = new Environment(width, height, enemies, locations)
-  let data = env.data
-  const episodes = config.agent.episodes
+async function train(agent) {
+  const env = await new Environment()
+  if (!fs.existsSync(`./results/${config.environmentId}/${config.workers}`)) {
+    fs.mkdirSync(`./results/${config.environmentId}/${config.workers}`)
+  }
+  const resultsFilename = `./results/${config.environmentId}/${config.workers}/results-${agent.id}.txt`
+  fs.appendFileSync(resultsFilename, `actionSpace, stateSpace ${env.actionSpace} ${env.stateSpace}\n`)
+  agent.makeModel(env.actionSpace, env.stateSpace)
+  const { episodes } = config.agent
 
   let scores = []
 
-  fs.appendFileSync('./results.txt', `workers: ${config.workers}\n`)
-
-  fs.appendFileSync('./results.txt', `game: ${JSON.stringify(config.game)}\n`)
-
   for (let episode = 1; episode <= episodes; episode++) {
-    env.initializeGame()
-    data = env.data
-    let state = [ _.cloneDeep(data) ]
-    let result, action, actionResult, nextState
-    let done = false,
-      reward = 0,
-      score = 0
+    let observation = await env.initializeSpace()
+    let done = false
+    let score = 0
 
     while (!done) {
       // take action
-      action = await agent.get_action(state)
-      actionResult = env.step(actionLookup[action])
-      reward = actionResult.reward
+      const action = await agent.getAction(observation)
+      const actionResult = await env.step(action)
+      const { reward } = actionResult
+      const nextObservation = actionResult.observation
       done = actionResult.done
 
       // take next action
-      nextState = [ _.cloneDeep(actionResult.state) ]
-      nextAction = await agent.get_action(nextState)
-
-      await agent.train_model(state, action, reward, nextState, nextAction, done)
+      nextAction = await agent.getAction(nextObservation)
+      await agent.trainModel(observation, action, reward, nextObservation, nextAction, done)
 
       // set new state and score
-      state = [ _.cloneDeep(actionResult.state) ]
+      observation = nextObservation
       score += reward
 
       await tf.nextFrame()
     }
     scores.push(score)
 
-    console.info(`${episode}th episode scored: ${score.toFixed(3)}`)
     if (!(episode % 10)) {
-      fs.appendFileSync(`./results-${agent.id}.txt`, `${episode},score,${_.mean(scores.slice(-10))}\n`)
+      fs.appendFileSync(resultsFilename, `${episode},score,${_.mean(scores.slice(-10))}\n`)
     }
   }
-
-
-  console.info(`training mean score: ${_.mean(scores)}`)
-
 }
 
 module.exports = train
