@@ -1,5 +1,16 @@
 Multi-Agent Deep Reinforcement Learning
-===
+==
+
+```
+    # with docker-compose
+    $ docker-compose up
+
+    # with docker
+    $ docker build gym -t gym
+    $ docker run gym
+    $ docker build . -t multi-agent-learning
+    $ docker run multi-agent-learning
+```
 
 An implementation of Multi-Agent Reinforcement Learning with Deep Sarsa Agents using [tensorflow-js](https://github.com/tensorflow/tfjs). *n* agents train each a sarsa policy network on gridworld, a game similar to the gym environment in [gym-gridworld](https://github.com/maximecb/gym-minigrid#included-environments).
 
@@ -14,18 +25,6 @@ Score over episodes - each agent shares experience with 2 adjacent neighbors
 
 ![Alt text](results/score-n-n.png?raw=true "Score over episodes n-n")
 Score over episodes - each agent shares experience with all other agents
-
-## How to run
-
-    # run gym environment server
-    $ git submodule init
-    $ cd gym-http-api
-    $ pip install -r requirements.txt
-    $ python3 gym_http_server.py
-
-    # run multi-agent learning
-    $ yarn install
-    $ yarn start
 
 ## Configure the game, cluster and agents
 ./config.json

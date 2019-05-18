@@ -4,13 +4,25 @@ const fs = require('fs')
 const tf = require('@tensorflow/tfjs')
 const _ = require('lodash')
 
+const setupResultsFile = (agent) => {
+  const { environmentId, workers } = config
+  const resultsFolder = `./results/${environmentId}`
+  if (!fs.existsSync(resultsFolder)) {
+    fs.mkdirSync(resultsFolder)
+  }
+  if (!fs.existsSync(`${resultsFolder}/${workers}`)) {
+    fs.mkdirSync(`${resultsFolder}/${workers}`)
+  }
+  return `${resultsFolder}/${workers}/${agent.id}.csv`
+}
+
 async function train(agent) {
   const env = await new Environment()
-  if (!fs.existsSync(`./results/${config.environmentId}/${config.workers}`)) {
-    fs.mkdirSync(`./results/${config.environmentId}/${config.workers}`)
-  }
-  const resultsFilename = `./results/${config.environmentId}/${config.workers}/results-${agent.id}.txt`
-  fs.appendFileSync(resultsFilename, `actionSpace, stateSpace ${env.actionSpace} ${env.stateSpace}\n`)
+
+  const resultsFilename = setupResultsFile(agent)
+  fs.appendFileSync(resultsFilename, `actions, states,
+    ${env.actionSpace}, ${env.stateSpace}\n`)
+
   agent.makeModel(env.actionSpace, env.stateSpace)
   const { episodes } = config.agent
 

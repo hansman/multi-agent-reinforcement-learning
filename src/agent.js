@@ -5,8 +5,6 @@ const _ = require('lodash')
 
 /**
  * Collaborative Deep Sarsa Agent.
- * Derived from https://github.com/Hulk89/gridworld_tfjs and
- * inspired by https://cs.stanford.edu/people/karpathy/reinforcejs/
  */
 class DeepSarsaAgent {
 
@@ -23,9 +21,6 @@ class DeepSarsaAgent {
   }
 
   makeModel(actionSpace = 4, stateSpace) {
-
-    console.log('actionSpace', actionSpace)
-
     this.actionSpace = actionSpace
     this.stateSpace = stateSpace
     const model = tf.sequential()
@@ -66,8 +61,8 @@ class DeepSarsaAgent {
     }
     // is 2-d?
     if (data[0].length) {
-      const input = tf.tensor3d(data, [1, this.height, this.width])
-      const flatten = input.reshape([1, this.width * this.height])
+      const input = tf.tensor3d(data, [1, data.length, data[0].length])
+      const flatten = input.reshape([1, data.length * data[0].length])
       input.dispose()
       return flatten
     } else {
@@ -146,8 +141,7 @@ class DeepSarsaAgent {
 
     this.numFrame += 1
     if (this.numFrame % 100 == 0) {
-      // console.info(`frame ${this.num_frame}. loss ${h.history.loss[0]}.`)
-      console.log('epsilon', this.epsilon)
+      console.info('epsilon', this.epsilon)
     }
     state.dispose()
     nextState.dispose()

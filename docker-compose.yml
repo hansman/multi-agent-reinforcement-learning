@@ -1,0 +1,24 @@
+version: '3.2'
+services:
+  multi-agent-learning:
+    build: .
+    network_mode: host
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 50M
+        reservations:
+          cpus: '0.5'
+          memory: 20M
+    volumes:
+      - type: bind
+        source: ./results
+        target: /app/results
+    depends_on:
+      - gym
+  gym:
+    build: ./gym
+    network_mode: host
+    ports:
+      - 5000:5000

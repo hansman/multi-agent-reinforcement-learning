@@ -1,5 +1,5 @@
 {
-  "environmentId": "CartPole-v1",
+  "environmentId": "MountainCar-v0",
   "workers": 1,
   "nearestNeighbor": true,
   "agent": {
@@ -12,10 +12,10 @@
   "gym": {
     "api": {
       "protocol": "http:",
-      "hostname": "127.0.0.1",
+      "hostname": "localhost",
       "port": "5000",
       "pathname": "/v1/envs/"
     },
-    "render": true
+    "render": false
   }
 }
