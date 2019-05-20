@@ -1,12 +1,12 @@
 {
-  "environmentId": "MountainCar-v0",
-  "workers": 1,
+  "environmentId": "Acrobot-v1",
+  "workers": 16,
   "nearestNeighbor": true,
   "agent": {
     "discountFactor": 0.9,
     "episodes": 1510,
     "learningRate": 0.001,
-    "epsilonDecay": 0.9998,
+    "epsilonDecay": 0.99998,
     "epsilonMin": 0.01
   },
   "gym": {

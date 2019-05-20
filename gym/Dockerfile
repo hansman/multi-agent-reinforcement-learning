@@ -4,8 +4,10 @@ FROM python:3.5
 COPY ./gym-http-api /app/
 WORKDIR /app
 
-RUN pip install -r requirements.txt
+RUN pip install box2d-py && \
+  pip install scipy && \
+  pip install --requirement requirements.txt
 
 EXPOSE 5000
 
-CMD ["python3", "gym_http_server.py", "-l", "0.0.0.0"]
+CMD ["python3", "gym_http_server.py", "--listen", "0.0.0.0"]

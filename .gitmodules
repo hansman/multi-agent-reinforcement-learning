@@ -1,4 +1,4 @@
-[submodule "gym-http-api"]
-	path = gym/gym-http-api
-	url = https://github.com/hansman/gym-http-api
-	branch = master
+[submodule "gym/gym-http-api"]
+    path = gym/gym-http-api
+    url = https://github.com/hansman/gym-http-api
+    branch = master
